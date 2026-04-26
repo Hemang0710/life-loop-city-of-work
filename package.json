@@ -3,9 +3,9 @@
   "version": "1.0.0",
   "description": "Life Loop: City of Work — Cursor Vibe Jam 2026",
   "scripts": {
-    "dev": "vite client --host",
-    "build": "vite build client",
-    "preview": "vite preview client",
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
     "server": "node server/index.js",
     "start": "node server/index.js"
   },
