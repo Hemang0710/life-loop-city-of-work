@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="description" content="Life Loop: City of Work — browser multiplayer life simulation. Work, earn, manage expenses and survive in a shared city. Cursor Vibe Jam 2026." />
+  <meta name="author" content="Hemang Patel" />
+  <meta name="copyright" content="© 2026 Hemang Patel" />
+  <meta property="og:title" content="Life Loop: City of Work" />
+  <meta property="og:description" content="Multiplayer browser life sim — take jobs, earn money, manage your household, and survive. Cursor Vibe Jam 2026 by Hemang Patel." />
+  <meta property="og:type" content="website" />
+  <title>Life Loop: City of Work — Cursor Vibe Jam 2026</title>
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%;
+      background: #0f0e17;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: Arial, sans-serif;
+    }
+    #game-container {
+      position: relative;
+    }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <!-- Cursor Vibe Jam 2026 widget — required -->
+  <script async src="https://vibej.am/2026/widget.js"></script>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

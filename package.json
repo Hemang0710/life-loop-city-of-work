@@ -1,0 +1,22 @@
+{
+  "name": "life-loop-city-of-work",
+  "version": "1.0.0",
+  "description": "Life Loop: City of Work — Cursor Vibe Jam 2026",
+  "scripts": {
+    "dev": "vite client --host",
+    "build": "vite build client",
+    "preview": "vite preview client",
+    "server": "node server/index.js",
+    "start": "node server/index.js"
+  },
+  "devDependencies": {
+    "vite": "^5.4.0"
+  },
+  "dependencies": {
+    "phaser": "^3.87.0",
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "socket.io-client": "^4.7.5",
+    "cors": "^2.8.5"
+  }
+}
