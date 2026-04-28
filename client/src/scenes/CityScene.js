@@ -35,13 +35,14 @@ export class CityScene extends Phaser.Scene {
     this._spawnNPCs();
     this._setupCamera();
     this._setupInput();
-    this._activeZone   = null;
-    this._panel        = null;
-    this._panelOpen    = false;
-    this._moveEmitAcc  = 0;
-    this._chatActive   = false;
-    this._chatInputEl  = null;
-    this._selfBubble   = null;
+    this._activeZone      = null;
+    this._panel           = null;
+    this._panelOpen       = false;
+    this._moveEmitAcc     = 0;
+    this._chatActive      = false;
+    this._chatInputEl     = null;
+    this._selfBubble      = null;
+    this._returnPortalZone = null;
 
     // Gift proximity highlight — persistent circle, shown when a player is in range
     this._giftHighlight = this.add.circle(0, 0, 36, 0xf39c12, 0.15)
@@ -77,6 +78,9 @@ export class CityScene extends Phaser.Scene {
     });
 
     this.cameras.main.fadeIn(400, 0, 0, 0);
+
+    const portalRef = playerSystem.get('portalRef');
+    if (portalRef) this._spawnReturnPortalObject(portalRef);
   }
 
   // ─────────────────────────── texture generation ──────────────────────────
@@ -688,6 +692,16 @@ export class CityScene extends Phaser.Scene {
       }
     });
 
+    if (this._returnPortalZone) {
+      const dist = Phaser.Math.Distance.Between(
+        this.player.x, this.player.y,
+        this._returnPortalZone.cx, this._returnPortalZone.cy,
+      );
+      if (dist < INTERACT_RADIUS && dist < nearestDist) {
+        nearest = this._returnPortalZone; nearestDist = dist;
+      }
+    }
+
     if (nearest !== this._activeZone) {
       if (this._activeZone) {
         this.tweens.add({ targets: this._zoneRings[this._activeZone.id], alpha: 0, duration: 200 });
@@ -720,9 +734,66 @@ export class CityScene extends Phaser.Scene {
         return;
       }
       this._launchMiniGame(zone);
+    } else if (zone.type === 'portal') {
+      this._enterVibePortal();
+    } else if (zone.type === 'returnPortal') {
+      if (zone.refUrl) window.location.href = zone.refUrl;
     } else {
       this._openPanel(zone);
     }
+  }
+
+  _enterVibePortal() {
+    const name     = playerSystem.get('name')  || 'Player';
+    const colorHex = playerSystem.get('color') || 0x3498db;
+    const level    = playerSystem.get('level') || 1;
+    const speed    = Math.min(10, Math.max(1, Math.round(level / 2)));
+
+    const COLOR_NAMES = {
+      [0x3498db]: 'blue',   [0xe74c3c]: 'red',    [0x2ecc71]: 'green',
+      [0xf39c12]: 'orange', [0x9b59b6]: 'purple',  [0x1abc9c]: 'teal',
+      [0xf1c40f]: 'yellow', [0xec407a]: 'pink',
+    };
+    const color = COLOR_NAMES[colorHex] || 'blue';
+    const ref   = encodeURIComponent(window.location.origin + window.location.pathname);
+    const url   = `https://vibej.am/portal/2026?username=${encodeURIComponent(name)}&color=${color}&speed=${speed}&ref=${ref}`;
+    window.location.href = url;
+  }
+
+  _spawnReturnPortalObject(refUrl) {
+    const cx = 610, cy = 880;
+
+    const gfx = this.add.graphics().setDepth(3);
+    gfx.fillStyle(0x00e5cc, 0.18);
+    gfx.fillCircle(cx, cy, 40);
+    gfx.lineStyle(3, 0x00e5cc, 0.95);
+    gfx.strokeCircle(cx, cy, 40);
+    gfx.lineStyle(1.5, 0xffffff, 0.4);
+    gfx.strokeCircle(cx, cy, 30);
+
+    this.add.text(cx, cy, '🔮', { fontSize: '26px' }).setOrigin(0.5).setDepth(5);
+    this.add.text(cx, cy - 52, '↩ Return Portal', {
+      fontSize: '11px', fontFamily: 'Arial Black',
+      color: '#00e5cc', stroke: '#000000', strokeThickness: 3,
+    }).setOrigin(0.5, 1).setDepth(5);
+
+    this.tweens.add({
+      targets: gfx, alpha: { from: 0.55, to: 1 },
+      yoyo: true, repeat: -1, duration: 950,
+    });
+
+    this._returnPortalZone = {
+      id: 'returnPortal', type: 'returnPortal',
+      label: 'Return Portal',
+      cx, cy, refUrl,
+      color: 0x00e5cc,
+    };
+
+    const ring = this.add.graphics().setDepth(2);
+    ring.lineStyle(3, 0x00e5cc, 0.7);
+    ring.strokeCircle(cx, cy, INTERACT_RADIUS - 20);
+    ring.setAlpha(0);
+    this._zoneRings['returnPortal'] = ring;
   }
 
   _launchMiniGame(zone) {

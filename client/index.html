@@ -2,29 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="description" content="Life Loop: City of Work — browser multiplayer life simulation. Work, earn, manage expenses and survive in a shared city. Cursor Vibe Jam 2026." />
   <meta name="author" content="Hemang Patel" />
   <meta name="copyright" content="© 2026 Hemang Patel" />
   <meta property="og:title" content="Life Loop: City of Work" />
   <meta property="og:description" content="Multiplayer browser life sim — take jobs, earn money, manage your household, and survive. Cursor Vibe Jam 2026 by Hemang Patel." />
   <meta property="og:type" content="website" />
+  <meta name="theme-color" content="#0f0e17" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Life Loop: City of Work — Cursor Vibe Jam 2026</title>
   <style>
+    :root {
+      --color-bg: #0f0e17;
+      --color-text: #ecf0f1;
+      --color-accent: #f1c40f;
+      --color-success: #2ecc71;
+      --color-danger: #e74c3c;
+      --safe-area-inset-top: env(safe-area-inset-top, 0px);
+      --safe-area-inset-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-area-inset-left: env(safe-area-inset-left, 0px);
+      --safe-area-inset-right: env(safe-area-inset-right, 0px);
+    }
+
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
     html, body {
       width: 100%; height: 100%;
-      background: #0f0e17;
+      background: var(--color-bg);
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: Arial, sans-serif;
+      color: var(--color-text);
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
     }
+
     #game-container {
       position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
-    canvas { display: block; }
+
+    canvas {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+    }
+
+    /* Mobile-first: Hide desktop-only elements */
+    @media (max-width: 768px) {
+      body { padding: var(--safe-area-inset-top) var(--safe-area-inset-right) var(--safe-area-inset-bottom) var(--safe-area-inset-left); }
+    }
+
+    /* Tablet: Medium adjustments */
+    @media (min-width: 769px) and (max-width: 1024px) {
+      #game-container { max-width: 100%; }
+    }
+
+    /* Desktop: Full size */
+    @media (min-width: 1025px) {
+      #game-container { width: 100%; height: 100%; }
+    }
   </style>
 </head>
 <body>

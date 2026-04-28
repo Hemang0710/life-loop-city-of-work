@@ -10,8 +10,19 @@ const config = {
   width: 1280,
   height: 720,
   scale: {
-    mode: Phaser.Scale.FIT,
+    mode: Phaser.Scale.RESIZE,
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    expandParent: true,
+    orientation: Phaser.Scale.Orientation.LANDSCAPE,
+    fullscreenTarget: 'parent',
+    min: {
+      width: 320,
+      height: 240,
+    },
+    max: {
+      width: 1920,
+      height: 1440,
+    },
   },
   physics: {
     default: 'arcade',
@@ -21,6 +32,11 @@ const config = {
   backgroundColor: '#0f0e17',
   pixelArt: false,
   roundPixels: true,
+  render: {
+    pixelArt: true,
+    antialias: false,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
 };
 
 new Phaser.Game(config);

@@ -4,15 +4,32 @@ import { EventBus } from '../systems/EventBus.js';
 import { ZONES, WORLD_W, WORLD_H } from '../config/GameConfig.js';
 import { SoundSystem } from '../systems/SoundSystem.js';
 
-const W = 1280;
-const H = 720;
-const BAR_W = 110;
-const BAR_H = 12;
-
 export class UIScene extends Phaser.Scene {
   constructor() { super({ key: 'UIScene' }); }
 
   create() {
+    // ── Responsive design calculations ──────────────────────────────────────
+    const cam = this.cameras.main;
+    this.W = cam.width || 1280;
+    this.H = cam.height || 720;
+
+    // Detect viewport type
+    this._isMobile = this.W <= 768;
+    this._isTablet = this.W > 768 && this.W <= 1024;
+    this._isDesktop = this.W > 1024;
+
+    // Responsive sizing
+    this._hudHeight = this._isMobile ? 48 : 62;
+    this._barWidth = Math.max(80, Math.min(110, this.W / 12));
+    this._barHeight = 10;
+    this._fontSize = {
+      lg: this._isMobile ? '14px' : '18px',
+      md: this._isMobile ? '12px' : '15px',
+      sm: this._isMobile ? '10px' : '13px',
+      xs: this._isMobile ? '9px' : '11px',
+    };
+    this._panelMargin = this._isMobile ? 8 : 12;
+
     this._buildHUD();
     this._buildPrompt();
     this._buildNotice();
@@ -43,136 +60,247 @@ export class UIScene extends Phaser.Scene {
   // ─────────────────────────────── HUD ─────────────────────────────────────
 
   _buildHUD() {
-    this.add.rectangle(W / 2, 30, W, 52, 0x0a0a14, 0.82).setScrollFactor(0).setDepth(20);
+    const W = this.W, H = this.H;
 
-    // ── Money ────
-    this.add.text(16, 14, '💰', { fontSize: '20px' }).setScrollFactor(0).setDepth(21);
-    this._moneyText = this.add.text(44, 15, '$0', {
-      fontSize: '18px', fontFamily: 'Arial Black', color: '#f1c40f',
-    }).setScrollFactor(0).setDepth(21);
+    // ═══ CLEAN 3-SECTION HUD WITH PROPER SPACING ═══════════════════════════════════
+    // Adjust HUD height for proper layout
+    this._hudHeight = this._isMobile ? 160 : 145;
 
-    // ── Savings ────
-    this.add.text(140, 14, '💾', { fontSize: '20px' }).setScrollFactor(0).setDepth(21);
-    this._savingsText = this.add.text(168, 15, '$0', {
-      fontSize: '16px', fontFamily: 'Arial', color: '#1abc9c',
-    }).setScrollFactor(0).setDepth(21);
+    // ──────────────────────────────────────────────────────────────────────────────
+    // SECTION 1: TOP BAR — MONEY & WEATHER ONLY (Y: 0-40)
+    // ──────────────────────────────────────────────────────────────────────────────
+    this.add.rectangle(W / 2, 20, W, 40, 0x0a0a14, 0.96).setScrollFactor(0).setDepth(20);
+    this.add.rectangle(W / 2, 40, W, 2, 0x3498db, 0.4).setScrollFactor(0).setDepth(20);
 
-    // ── Day + Level ────
-    this._dayText = this.add.text(W - 90, 5, 'Day 1', {
-      fontSize: '13px', fontFamily: 'Arial Black', color: '#95a5a6',
-    }).setOrigin(0, 0).setScrollFactor(0).setDepth(21);
-    this._levelText = this.add.text(W - 90, 21, 'Lv 1', {
-      fontSize: '11px', fontFamily: 'Arial', color: '#9b59b6',
-    }).setOrigin(0, 0).setScrollFactor(0).setDepth(21);
+    // LEFT: Money & Savings
+    let x = this._panelMargin + 10;
+    this.add.text(x, 5, '💰 CASH', { fontSize: '10px', fontFamily: 'Arial Black', color: '#95a5a6' })
+      .setScrollFactor(0).setDepth(21).setOrigin(0, 0);
+    this._moneyText = this.add.text(x, 17, '$120', {
+      fontSize: '22px', fontFamily: 'Arial Black', color: '#f1c40f',
+    }).setScrollFactor(0).setDepth(21).setOrigin(0, 0);
 
-    // ── Online count ────
-    this._onlineText = this.add.text(W - 12, 8, '🌐 1', {
-      fontSize: '13px', fontFamily: 'Arial', color: '#5dade2',
-    }).setOrigin(1, 0).setScrollFactor(0).setDepth(21);
+    x += this._isMobile ? 85 : 150;
+    this.add.text(x, 5, '💾 SAVINGS', { fontSize: '10px', fontFamily: 'Arial Black', color: '#95a5a6' })
+      .setScrollFactor(0).setDepth(21).setOrigin(0, 0);
+    this._savingsText = this.add.text(x, 17, '$0', {
+      fontSize: '18px', fontFamily: 'Arial', color: '#1abc9c',
+    }).setScrollFactor(0).setDepth(21).setOrigin(0, 0);
 
-    // ── Stat bars ─────────────────────────────────────────────────────────────
+    // CENTER: Weather (large, centered)
+    const centerX = W / 2;
+    this.add.text(centerX, 5, '🌤️ WEATHER', { fontSize: '10px', fontFamily: 'Arial Black', color: '#95a5a6' })
+      .setScrollFactor(0).setDepth(21).setOrigin(0.5, 0);
+    this._weatherBadge = this.add.text(centerX, 17, 'Clear Skies', {
+      fontSize: '16px', fontFamily: 'Arial Black', color: '#ecf0f1',
+    }).setScrollFactor(0).setDepth(21).setOrigin(0.5, 0);
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // SECTION 2: STATUS BAR (Level, Day, Online) — Y: 42-68
+    // ──────────────────────────────────────────────────────────────────────────────
+    this.add.rectangle(W / 2, 55, W, 26, 0x0a0a1a, 0.9).setScrollFactor(0).setDepth(20);
+    this.add.rectangle(W / 2, 68, W, 1, 0x3498db, 0.25).setScrollFactor(0).setDepth(20);
+
+    // RIGHT: Level (large)
+    x = W - this._panelMargin - 10;
+    this.add.text(x, 44, '📊 LEVEL', { fontSize: '10px', fontFamily: 'Arial Black', color: '#95a5a6' })
+      .setScrollFactor(0).setDepth(21).setOrigin(1, 0);
+    this._levelText = this.add.text(x, 54, 'Lv 1', {
+      fontSize: '16px', fontFamily: 'Arial Black', color: '#9b59b6',
+    }).setScrollFactor(0).setDepth(21).setOrigin(1, 0);
+
+    // LEFT of RIGHT: Day
+    x -= 90;
+    this.add.text(x, 44, '📅 DAY', { fontSize: '10px', fontFamily: 'Arial Black', color: '#95a5a6' })
+      .setScrollFactor(0).setDepth(21).setOrigin(0, 0);
+    this._dayText = this.add.text(x, 54, 'Day 1', {
+      fontSize: '16px', fontFamily: 'Arial Black', color: '#ecf0f1',
+    }).setScrollFactor(0).setDepth(21).setOrigin(0, 0);
+
+    // LEFT: Online
+    x = this._panelMargin + 10;
+    this.add.text(x, 44, '🌐 ONLINE', { fontSize: '10px', fontFamily: 'Arial Black', color: '#95a5a6' })
+      .setScrollFactor(0).setDepth(21).setOrigin(0, 0);
+    this._onlineText = this.add.text(x, 54, '1 player', {
+      fontSize: '16px', fontFamily: 'Arial Black', color: '#5dade2',
+    }).setScrollFactor(0).setDepth(21).setOrigin(0, 0);
+
+    // ──────────────────────────────────────────────────────────────────────────────
+    // SECTION 3: STAT BARS (Energy, Food, Stability, Happiness) — Y: 70-140
+    // ──────────────────────────────────────────────────────────────────────────────
+    this.add.rectangle(W / 2, 105, W, 70, 0x0f0e17, 0.88).setScrollFactor(0).setDepth(20);
+
     const barConfigs = [
-      { label: '⚡', key: '_energyBar',    color: 0x2ecc71, stat: 'energy',            x: 310 },
-      { label: '🍞', key: '_foodBar',      color: 0xe67e22, stat: 'foodStatus',         x: 470 },
-      { label: '🏠', key: '_stabilityBar', color: 0x3498db, stat: 'householdStability', x: 630 },
-      { label: '😊', key: '_happyBar',     color: 0xec407a, stat: 'familyHappiness',    x: 790 },
+      { emoji: '⚡', label: 'Energy',   key: '_energyBar',    color: 0x2ecc71, stat: 'energy' },
+      { emoji: '🍞', label: 'Food',     key: '_foodBar',      color: 0xe67e22, stat: 'foodStatus' },
+      { emoji: '🏠', label: 'Stability',key: '_stabilityBar', color: 0x3498db, stat: 'householdStability' },
+      { emoji: '😊', label: 'Happiness',key: '_happyBar',     color: 0xec407a, stat: 'familyHappiness' },
     ];
 
-    barConfigs.forEach(cfg => {
-      this.add.text(cfg.x, 14, cfg.label, { fontSize: '17px' }).setScrollFactor(0).setDepth(21);
-      this.add.rectangle(cfg.x + 26 + BAR_W / 2, 24, BAR_W, BAR_H, 0x2c3e50)
-        .setScrollFactor(0).setDepth(21);
-      const fill = this.add.rectangle(cfg.x + 26, 24, BAR_W, BAR_H, cfg.color)
-        .setScrollFactor(0).setDepth(22).setOrigin(0, 0.5);
-      this[cfg.key] = { fill, color: cfg.color, stat: cfg.stat, baseX: cfg.x + 26 };
-      const pct = this.add.text(cfg.x + 26 + BAR_W + 4, 24, '100%', {
-        fontSize: '11px', fontFamily: 'Arial', color: '#95a5a6',
-      }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(22);
-      this[cfg.key].pctText = pct;
-    });
+    // On mobile: 2 rows. On desktop: 1 row
+    if (this._isMobile) {
+      // Mobile: 2x2 grid
+      barConfigs.forEach((cfg, i) => {
+        const row = Math.floor(i / 2);
+        const col = i % 2;
+        const barX = this._panelMargin + 10 + col * (W / 2 - this._panelMargin - 15);
+        const barY = 75 + row * 35;
+        this._drawStatBar(barX, barY, cfg);
+      });
+    } else {
+      // Desktop: 1 row with all 4 bars spread evenly
+      const barSpacing = (W - 2 * this._panelMargin - 20) / 4;
+      barConfigs.forEach((cfg, i) => {
+        const barX = this._panelMargin + 10 + i * barSpacing + 25;
+        const barY = 82;
+        this._drawStatBar(barX, barY, cfg);
+      });
+    }
 
-    // ── Job progress dots — 4 circles tracking current day cycle ────────────
-    this.add.text(1010, 11, 'TODAY', {
-      fontSize: '8px', fontFamily: 'Arial', color: '#4a4a6a',
-    }).setOrigin(0.5, 0).setScrollFactor(0).setDepth(21);
+    // ──────────────────────────────────────────────────────────────────────────────
+    // JOB PROGRESS & BADGES (Below stat bars)
+    // ──────────────────────────────────────────────────────────────────────────────
     this._jobDots = [];
     for (let i = 0; i < 4; i++) {
-      const dot = this.add.circle(988 + i * 16, 30, 5, 0x2c3e50)
+      const dot = this.add.circle(this._panelMargin + 35 + i * 14, 138, 3.5, 0x2c3e50)
         .setScrollFactor(0).setDepth(21).setStrokeStyle(1.5, 0x4a4a6a);
       this._jobDots.push(dot);
     }
 
-    // ── XP bar (thin strip at bottom of HUD) ─────────────────────────────────
-    this.add.rectangle(W / 2, 58, W, 5, 0x1a1a2e).setScrollFactor(0).setDepth(20);
-    this._xpFill = this.add.rectangle(0, 58, 0, 5, 0x9b59b6)
-      .setScrollFactor(0).setDepth(21).setOrigin(0, 0.5);
+    // Vehicle & prestige badges
+    const badgeX = W - this._panelMargin - 10;
+    this._vehicleBadge = this.add.text(badgeX, 138, '', {
+      fontSize: '11px', fontFamily: 'Arial', color: '#e67e22',
+      backgroundColor: 'rgba(230, 126, 34, 0.15)', padding: { x: 6, y: 2 },
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(21);
 
-    // ── Weather badge ──────────────────────────────────────────────────────
-    this._weatherBadge = this.add.text(310, 36, '', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#ecf0f1',
-      backgroundColor: 'rgba(0,0,0,0.45)', padding: { x: 5, y: 2 },
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(21);
+    this._prestigeText = this.add.text(badgeX - 90, 138, '', {
+      fontSize: '10px', fontFamily: 'Arial Black', color: '#f1c40f',
+    }).setOrigin(0, 0).setScrollFactor(0).setDepth(21);
 
-    // ── Vehicle badge ──────────────────────────────────────────────────────
-    this._vehicleBadge = this.add.text(395, 36, '', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#e67e22',
-      backgroundColor: 'rgba(0,0,0,0.45)', padding: { x: 5, y: 2 },
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(21);
+    // ──────────────────────────────────────────────────────────────────────────────
+    // CONTROL BUTTONS & FOOTER
+    // ──────────────────────────────────────────────────────────────────────────────
+    this._setupControlButtons(W, H);
 
-    // ── Prestige stars ─────────────────────────────────────────────────────
-    this._prestigeText = this.add.text(W - 90, 38, '', {
-      fontSize: '11px', fontFamily: 'Arial', color: '#f1c40f',
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(21);
+    // Copyright
+    const creditSize = this._isMobile ? '8px' : '9px';
+    const creditText = this._isMobile ? '© Hemang' : '© 2026 Hemang Patel';
+    this.add.text(this._panelMargin, H - 2, creditText, {
+      fontSize: creditSize, fontFamily: 'Arial', color: '#2a2a3d',
+    }).setOrigin(0, 1).setScrollFactor(0).setDepth(20);
 
     EventBus.on('weatherChanged', () => this._refreshHUD());
     EventBus.on('vehicleChanged', () => this._refreshHUD());
+  }
 
-    // ── Copyright credit (always visible, bottom-left) ──────────────────────
-    this.add.text(8, H - 8, '© 2026 Hemang Patel  ·  Cursor Vibe Jam 2026', {
-      fontSize: '10px', fontFamily: 'Arial', color: '#2a2a3d',
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(20);
+  _drawStatBar(x, y, cfg) {
+    const barW = 80;
+    const barH = 14;
 
-    // ── Tutorial button ────────────────────────────────────────────────────
-    const tutBtn = this.add.text(260, 45, '❓ How to Play', {
-      fontSize: '11px', fontFamily: 'Arial', color: '#7f8c8d',
-      backgroundColor: 'rgba(0,0,0,0.4)', padding: { x: 6, y: 3 },
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
-    tutBtn.on('pointerover', () => tutBtn.setStyle({ color: '#5dade2' }));
-    tutBtn.on('pointerout',  () => tutBtn.setStyle({ color: '#7f8c8d' }));
-    tutBtn.on('pointerdown', () => this._showTutorialPanel());
+    // Label with emoji (ABOVE the bar)
+    this.add.text(x, y - 14, `${cfg.emoji} ${cfg.label}`, {
+      fontSize: '11px', fontFamily: 'Arial Black', color: '#bdc3c7',
+    }).setScrollFactor(0).setDepth(21).setOrigin(0, 0);
 
-    // ── Credits button ─────────────────────────────────────────────────────
-    const credBtn = this.add.text(388, 45, '👤 Credits', {
-      fontSize: '11px', fontFamily: 'Arial', color: '#7f8c8d',
-      backgroundColor: 'rgba(0,0,0,0.4)', padding: { x: 6, y: 3 },
-    }).setOrigin(0, 1).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
-    credBtn.on('pointerover', () => credBtn.setStyle({ color: '#f1c40f' }));
-    credBtn.on('pointerout',  () => credBtn.setStyle({ color: '#7f8c8d' }));
-    credBtn.on('pointerdown', () => this._showCredits());
+    // Bar background
+    this.add.rectangle(x + barW / 2, y + 1, barW + 3, barH + 3, 0x1a1a2e)
+      .setScrollFactor(0).setDepth(21);
 
-    // ── Skills panel (bottom-right, toggleable) ─────────────────────────────
+    // Bar fill
+    const fill = this.add.rectangle(x, y + 1, barW, barH, cfg.color)
+      .setScrollFactor(0).setDepth(22).setOrigin(0, 0.5);
+
+    // Percentage text (RIGHT of bar)
+    const pct = this.add.text(x + barW + 8, y + 1, '100%', {
+      fontSize: '10px', fontFamily: 'Arial Black', color: '#f1c40f',
+    }).setOrigin(0, 0.5).setScrollFactor(0).setDepth(22);
+
+    // Status text (BELOW bar, not overlapping)
+    const statusText = this.add.text(x, y + 18, 'Good', {
+      fontSize: '9px', fontFamily: 'Arial', color: '#95a5a6',
+    }).setOrigin(0, 0).setScrollFactor(0).setDepth(21);
+
+    this[cfg.key] = { fill, color: cfg.color, stat: cfg.stat, baseX: x, pctText: pct, statusText };
+  }
+
+  _setupControlButtons(W, H) {
+    const btnY = this._hudHeight + 8;
+    const btnPadding = { x: 8, y: 4 };
+    const btnSize = '11px';
+
+    // ── How to Play + Credits (desktop only) ────
+    if (!this._isMobile) {
+      const helpBtn = this.add.text(W / 2 - 140, btnY, '❓ How to Play', {
+        fontSize: btnSize, fontFamily: 'Arial Black', color: '#3498db',
+        backgroundColor: 'rgba(52, 152, 219, 0.12)', padding: btnPadding,
+      }).setOrigin(0, 0).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+      helpBtn.on('pointerover', () => {
+        helpBtn.setStyle({ backgroundColor: 'rgba(52, 152, 219, 0.25)' });
+      });
+      helpBtn.on('pointerout', () => {
+        helpBtn.setStyle({ backgroundColor: 'rgba(52, 152, 219, 0.12)' });
+      });
+      helpBtn.on('pointerdown', () => this._showTutorialPanel());
+
+      const credBtn = this.add.text(W / 2 + 10, btnY, '👤 Credits', {
+        fontSize: btnSize, fontFamily: 'Arial Black', color: '#f1c40f',
+        backgroundColor: 'rgba(241, 196, 15, 0.12)', padding: btnPadding,
+      }).setOrigin(0, 0).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+      credBtn.on('pointerover', () => {
+        credBtn.setStyle({ backgroundColor: 'rgba(241, 196, 15, 0.25)' });
+      });
+      credBtn.on('pointerout', () => {
+        credBtn.setStyle({ backgroundColor: 'rgba(241, 196, 15, 0.12)' });
+      });
+      credBtn.on('pointerdown', () => this._showCredits());
+    }
+
+    // ── Right Control Panel ────
     this._skillsVisible = false;
-    this._skillBtn = this.add.text(W - 12, 45, '📊 Skills', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#7f8c8d',
-      backgroundColor: 'rgba(0,0,0,0.4)', padding: { x: 6, y: 3 },
-    }).setOrigin(1, 1).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    const rightX = W - this._panelMargin - 8;
+    const rightSpacing = 50;
+
+    // Skills Button
+    this._skillBtn = this.add.text(rightX, btnY, '📊 Skills', {
+      fontSize: btnSize, fontFamily: 'Arial Black', color: '#8e44ad',
+      backgroundColor: 'rgba(142, 68, 173, 0.12)', padding: btnPadding,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    this._skillBtn.on('pointerover', () => {
+      this._skillBtn.setStyle({ backgroundColor: 'rgba(142, 68, 173, 0.25)' });
+    });
+    this._skillBtn.on('pointerout', () => {
+      this._skillBtn.setStyle({ backgroundColor: 'rgba(142, 68, 173, 0.12)' });
+    });
     this._skillBtn.on('pointerdown', () => this._toggleSkills());
 
-    // ── Goals button ────────────────────────────────────────────────────────
+    // Goals Button
     this._goalsPanel = null;
-    this._goalsBtn = this.add.text(W - 160, 45, '📋 Goals', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#7f8c8d',
-      backgroundColor: 'rgba(0,0,0,0.4)', padding: { x: 6, y: 3 },
-    }).setOrigin(1, 1).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    this._goalsBtn = this.add.text(rightX - rightSpacing, btnY, '📋 Goals', {
+      fontSize: btnSize, fontFamily: 'Arial Black', color: '#27ae60',
+      backgroundColor: 'rgba(39, 174, 96, 0.12)', padding: btnPadding,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    this._goalsBtn.on('pointerover', () => {
+      this._goalsBtn.setStyle({ backgroundColor: 'rgba(39, 174, 96, 0.25)' });
+    });
+    this._goalsBtn.on('pointerout', () => {
+      this._goalsBtn.setStyle({ backgroundColor: 'rgba(39, 174, 96, 0.12)' });
+    });
     this._goalsBtn.on('pointerdown', () => this._toggleGoals());
 
-    // ── Leaderboard button ──────────────────────────────────────────────────
+    // Leaderboard Button
     this._lbPanel = null;
     this._lbRefreshTimer = null;
-    this._lbBtn = this.add.text(W - 86, 45, '🏆 Top', {
-      fontSize: '12px', fontFamily: 'Arial', color: '#7f8c8d',
-      backgroundColor: 'rgba(0,0,0,0.4)', padding: { x: 6, y: 3 },
-    }).setOrigin(1, 1).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    this._lbBtn = this.add.text(rightX - rightSpacing * 2, btnY, '🏆 Top Players', {
+      fontSize: btnSize, fontFamily: 'Arial Black', color: '#f39c12',
+      backgroundColor: 'rgba(243, 156, 18, 0.12)', padding: btnPadding,
+    }).setOrigin(1, 0).setScrollFactor(0).setDepth(21).setInteractive({ useHandCursor: true });
+    this._lbBtn.on('pointerover', () => {
+      this._lbBtn.setStyle({ backgroundColor: 'rgba(243, 156, 18, 0.25)' });
+    });
+    this._lbBtn.on('pointerout', () => {
+      this._lbBtn.setStyle({ backgroundColor: 'rgba(243, 156, 18, 0.12)' });
+    });
     this._lbBtn.on('pointerdown', () => this._toggleLeaderboard());
 
     this._skillsPanel = this._buildSkillsPanel();
@@ -182,6 +310,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   _buildSkillsPanel() {
+    const W = this.W, H = this.H;
     const els = [];
     const px = W - 10, py = 60;
     const bg = this.add.rectangle(px - 105, py + 90, 200, 195, 0x0a0a14, 0.9)
@@ -249,6 +378,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   _fetchAndDrawLeaderboard() {
+    const W = this.W, H = this.H;
     // Destroy only the data rows (not bg / title), or rebuild everything
     if (this._lbPanel) {
       this._lbPanel.forEach(el => el?.destroy());
@@ -334,11 +464,13 @@ export class UIScene extends Phaser.Scene {
   // ────────────────────────────── prompt ───────────────────────────────────
 
   _buildPrompt() {
-    this._promptBg = this.add.rectangle(W / 2, H - 44, 360, 36, 0x000000, 0.75)
+    const W = this.W, H = this.H;
+    const promptW = this._isMobile ? Math.min(280, W - 16) : 360;
+    this._promptBg = this.add.rectangle(W / 2, H - 32, promptW, 32, 0x000000, 0.75)
       .setScrollFactor(0).setDepth(20).setVisible(false);
-    this._promptText = this.add.text(W / 2, H - 44, '', {
-      fontSize: '16px', fontFamily: 'Arial Black', color: '#f1c40f',
-      stroke: '#000', strokeThickness: 3,
+    this._promptText = this.add.text(W / 2, H - 32, '', {
+      fontSize: this._fontSize.md, fontFamily: 'Arial Black', color: '#f1c40f',
+      stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(21).setVisible(false);
   }
 
@@ -360,10 +492,12 @@ export class UIScene extends Phaser.Scene {
   // ────────────────────────────── notice ───────────────────────────────────
 
   _buildNotice() {
-    this._noticeBg = this.add.rectangle(W / 2, H / 2 - 80, 440, 52, 0x1a252f, 0.95)
+    const W = this.W, H = this.H;
+    const noticeW = this._isMobile ? Math.min(320, W - 16) : 440;
+    this._noticeBg = this.add.rectangle(W / 2, H / 2 - 80, noticeW, 46, 0x1a252f, 0.95)
       .setScrollFactor(0).setDepth(40).setVisible(false).setStrokeStyle(2, 0xf1c40f);
     this._noticeText = this.add.text(W / 2, H / 2 - 80, '', {
-      fontSize: '17px', fontFamily: 'Arial Black', color: '#f1c40f',
+      fontSize: this._fontSize.md, fontFamily: 'Arial Black', color: '#f1c40f',
       stroke: '#000', strokeThickness: 2,
     }).setOrigin(0.5).setScrollFactor(0).setDepth(41).setVisible(false);
     this._noticeTween = null;
@@ -393,6 +527,7 @@ export class UIScene extends Phaser.Scene {
   // ──────────────────── city event banner ──────────────────────────────────
 
   _showCityEventBanner(data) {
+    const W = this.W, H = this.H;
     SoundSystem.cityEvent();
     // Dismiss any existing banner
     this._cityEventModal.forEach(el => { if (el?.active) el.destroy(); });
@@ -446,6 +581,7 @@ export class UIScene extends Phaser.Scene {
   // ────────────────────────── HUD refresh ──────────────────────────────────
 
   _refreshHUD() {
+    const W = this.W;
     const money   = playerSystem.get('money')    || 0;
     const savings = playerSystem.get('savings')  || 0;
     const day     = playerSystem.get('dayCount') || 1;
@@ -455,41 +591,59 @@ export class UIScene extends Phaser.Scene {
     this._dayText.setText(`Day ${day}`);
     this._moneyText.setColor(money < 50 ? '#e74c3c' : '#f1c40f');
 
-    [this._energyBar, this._foodBar, this._stabilityBar, this._happyBar].forEach(bar => {
+    // Update stat bars
+    const barW = 70;
+    const statConfigs = [
+      { bar: this._energyBar, low: 'Tired', high: 'Rested' },
+      { bar: this._foodBar, low: 'Hungry', high: 'Fed' },
+      { bar: this._stabilityBar, low: 'At Risk', high: 'Stable' },
+      { bar: this._happyBar, low: 'Sad', high: 'Happy' },
+    ];
+
+    statConfigs.forEach(({ bar }) => {
       const val = Math.max(0, Math.min(100, playerSystem.get(bar.stat) || 0));
       const pct = val / 100;
-      bar.fill.setSize(Math.max(2, BAR_W * pct), BAR_H);
+      bar.fill.setSize(Math.max(2, barW * pct), 12);
       bar.pctText.setText(`${val}%`);
 
+      // Color change: red < 25%, orange 25-50%, then normal color
       if (val < 25)      bar.fill.setFillStyle(0xe74c3c);
       else if (val < 50) bar.fill.setFillStyle(0xf39c12);
       else               bar.fill.setFillStyle(bar.color);
+
+      // Update status text
+      const isLow = val < 40;
+      const statusTexts = {
+        energy: isLow ? 'Tired' : 'Rested',
+        foodStatus: isLow ? 'Hungry' : 'Fed',
+        householdStability: isLow ? 'At Risk' : 'Stable',
+        familyHappiness: isLow ? 'Sad' : 'Happy',
+      };
+      bar.statusText.setText(statusTexts[bar.stat] || 'Good');
+      bar.statusText.setColor(isLow ? '#e74c3c' : '#2ecc71');
     });
 
     if (this._skillsVisible) this._refreshSkills();
 
-    // Weather / vehicle / prestige badges
+    // Weather badge
     const w = weatherSystem.getCurrent();
     this._weatherBadge.setText(`${w.emoji} ${w.label}`);
-    const v = vehicleSystem.getVehicle();
-    this._vehicleBadge.setText(v ? `${v.emoji} ${v.label}` : '');
-    const prestige = playerSystem.get('prestige') || 0;
-    this._prestigeText.setText(prestige > 0 ? `${'⭐'.repeat(Math.min(prestige, 5))} P${prestige}` : '');
 
     // Job progress dots
     const jobsDone = (playerSystem.get('jobsCompleted') || 0) % 4;
     this._jobDots.forEach((dot, i) => {
       if (i < jobsDone) {
-        dot.setFillStyle(0xf1c40f).setStrokeStyle(1.5, 0xe67e22);
+        dot.setFillStyle(0xf1c40f).setStrokeStyle(1, 0xe67e22);
       } else {
-        dot.setFillStyle(0x2c3e50).setStrokeStyle(1.5, 0x4a4a6a);
+        dot.setFillStyle(0x2c3e50).setStrokeStyle(1, 0x4a4a6a);
       }
     });
 
-    // XP bar + level
-    const prog = levelSystem.getProgress();
-    this._xpFill.setSize(Math.round(W * prog.pct), 5);
-    this._levelText.setText(`Lv ${prog.level}`);
+    // Vehicle & prestige badges
+    const v = vehicleSystem.getVehicle();
+    this._vehicleBadge.setText(v ? `🚗 ${v.label}` : '');
+    const prestige = playerSystem.get('prestige') || 0;
+    this._prestigeText.setText(prestige > 0 ? `${'⭐'.repeat(Math.min(prestige, 5))} P${prestige}` : '');
 
     if (playerSystem.get('foodStatus') < 20) {
       this._triggerNotice('🍞 Family is hungry! Visit the Market.', 0xe67e22);
@@ -499,6 +653,7 @@ export class UIScene extends Phaser.Scene {
   // ─────────────────────────── goals panel ─────────────────────────────────
 
   _toggleGoals() {
+    const W = this.W, H = this.H;
     if (this._goalsPanel) {
       this._goalsPanel.forEach(el => el?.destroy());
       this._goalsPanel = null;
@@ -555,6 +710,7 @@ export class UIScene extends Phaser.Scene {
   // ───────────��─── level-up / achievement / goals notices ──────────────────
 
   _showLevelUpNotice(data) {
+    const W = this.W, H = this.H;
     SoundSystem.levelUp();
     const cx = W / 2, cy = H / 2 - 60;
     const els = [];
@@ -593,6 +749,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   _showTutorialPanel() {
+    const W = this.W, H = this.H;
     const cx = W / 2, cy = H / 2;
     const els = [];
 
@@ -645,6 +802,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   _showCredits() {
+    const W = this.W, H = this.H;
     const cx = W / 2, cy = H / 2;
     const els = [];
 
@@ -729,9 +887,11 @@ export class UIScene extends Phaser.Scene {
   // ───────────────────────────── minimap ───────────────────────────────────
 
   _buildMinimap() {
-    const MM_W = 140, MM_H = 110;
-    this._MM_X = W - 10 - MM_W; // 1130
-    this._MM_Y = H - 10 - MM_H; // 600
+    const W = this.W, H = this.H;
+    const MM_W = this._isMobile ? 100 : 140;
+    const MM_H = this._isMobile ? 80 : 110;
+    this._MM_X = W - 10 - MM_W;
+    this._MM_Y = H - 10 - MM_H;
 
     this.add.rectangle(
       this._MM_X + MM_W / 2, this._MM_Y + MM_H / 2, MM_W, MM_H, 0x07080f, 0.88,
@@ -786,6 +946,7 @@ export class UIScene extends Phaser.Scene {
   // ─────────────────────────── game over ───────────────────────────────────
 
   _showGameOver(data) {
+    const W = this.W, H = this.H;
     const cx = W / 2, cy = H / 2;
 
     this.add.rectangle(cx, cy, W, H, 0x000000, 0.9)
@@ -819,6 +980,7 @@ export class UIScene extends Phaser.Scene {
   }
 
   _showDayEnd(data) {
+    const W = this.W, H = this.H;
     SoundSystem.dayEnd();
     this._dayModal.forEach(el => el?.destroy());
     this._dayModal = [];

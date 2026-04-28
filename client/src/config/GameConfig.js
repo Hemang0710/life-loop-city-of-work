@@ -102,6 +102,12 @@ export const ZONES = [
     color: 0xff9800, darkColor: 0xe65100,
     emoji: '🛍️', description: 'Buy appliances & decorations for home',
   },
+  {
+    id: 'portal', label: 'Vibe Jam Portal', type: 'portal',
+    cx: 1680, cy: 1560, w: 180, h: 160,
+    color: 0x7c3aed, darkColor: 0x4c1d95,
+    emoji: '🌀', description: 'Travel to other Vibe Jam 2026 games',
+  },
 ];
 
 // ─── Job definitions ───────────────────────────────────────────────────────

@@ -6,6 +6,28 @@ export class BootScene extends Phaser.Scene {
   constructor() { super({ key: 'BootScene' }); }
 
   create() {
+    // ── Portal / webring URL param handling ──────────────────────────────────
+    const params    = new URLSearchParams(window.location.search);
+    const isPortal  = params.get('portal') === 'true';
+    const pUsername = params.get('username');
+    const pColor    = params.get('color');
+    const pRef      = params.get('ref');
+
+    if (pUsername) playerSystem.set('name', pUsername);
+    if (pRef)      playerSystem.set('portalRef', decodeURIComponent(pRef));
+    if (pColor) {
+      const colorMap = {
+        blue: 0x3498db, red: 0xe74c3c, green: 0x2ecc71, orange: 0xf39c12,
+        purple: 0x9b59b6, teal: 0x1abc9c, yellow: 0xf1c40f, pink: 0xec407a,
+      };
+      const hexOnly = pColor.replace('#', '');
+      const mapped  = /^[0-9a-fA-F]{6}$/.test(hexOnly)
+        ? parseInt(hexOnly, 16)
+        : colorMap[pColor.toLowerCase()];
+      if (mapped) playerSystem.set('color', mapped);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     const W = this.scale.width;
     const H = this.scale.height;
 
@@ -49,7 +71,14 @@ export class BootScene extends Phaser.Scene {
       fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#6c6b8a',
     }).setOrigin(0.5);
 
-    this._showNameOverlay();
+    if (isPortal) {
+      const name = playerSystem.get('name') || `Player_${Math.floor(1000 + Math.random() * 9000)}`;
+      playerSystem.set('name', name);
+      playerSystem.set('tutorialSeen', true);
+      this._startGame(name);
+    } else {
+      this._showNameOverlay();
+    }
   }
 
   _showNameOverlay() {
